@@ -1,5 +1,4 @@
-import React, {
-} from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import {
   TextInput,
@@ -78,9 +77,9 @@ const defaultStyles = {
   },
 };
 
-const GooglePlacesAutocomplete = React.createClass({
+export class GooglePlacesAutocomplete extends React.Component {
 
-  propTypes: {
+  static propTypes = {
     placeholder: PropTypes.string,
     placeholderTextColor: PropTypes.string,
     underlineColorAndroid: PropTypes.string,
@@ -116,77 +115,38 @@ const GooglePlacesAutocomplete = React.createClass({
     listUnderlayColor: PropTypes.string,
     debounce: PropTypes.number,
     isRowScrollable: PropTypes.bool
-  },
+  }
 
-  getDefaultProps() {
-    return {
-      placeholder: 'Search',
-      placeholderTextColor: '#A8A8A8',
-      isRowScrollable: true,
-      underlineColorAndroid: 'transparent',
-      returnKeyType: 'default',
-      onPress: () => {},
-      onNotFound: () => {},
-      onFail: () => {},
-      minLength: 0,
-      fetchDetails: false,
-      autoFocus: false,
-      autoFillOnNotFound: false,
-      keyboardShouldPersistTaps: 'always',
-      getDefaultValue: () => '',
-      timeout: 20000,
-      onTimeout: () => console.warn('google places autocomplete: request timeout'),
-      query: {
-        key: 'missing api key',
-        language: 'en',
-        types: 'geocode',
-      },
-      GoogleReverseGeocodingQuery: {},
-      GooglePlacesSearchQuery: {
-        rankby: 'distance',
-        types: 'food',
-      },
-      styles: {},
-      textInputProps: {},
-      enablePoweredByContainer: true,
-      predefinedPlaces: [],
-      currentLocation: false,
-      currentLocationLabel: 'Current location',
-      nearbyPlacesAPI: 'GooglePlacesSearch',
-      enableHighAccuracyLocation: true,
-      filterReverseGeocodingByTypes: [],
-      predefinedPlacesAlwaysVisible: false,
-      enableEmptySections: true,
-      listViewDisplayed: 'auto',
-      debounce: 0
-    };
-  },
-
-  getInitialState() {
+  constructor(props) {
+    super(props);
+    this.mounted = false;
+    this._results = [];
+    this._requests = [];
     const ds = new ListView.DataSource({
-      rowHasChanged: function rowHasChanged(r1, r2) {
-        if (typeof r1.isLoading !== 'undefined') {
-          return true;
+        rowHasChanged: (r1, r2) => {
+            if (typeof r1.isLoading !== 'undefined') {
+                return true;
+            }
+            return r1 !== r2;
         }
-        return r1 !== r2;
-      }
     });
-    return {
-      text: this.props.getDefaultValue(),
-      dataSource: ds.cloneWithRows(this.buildRowsFromResults([])),
-      listViewDisplayed: this.props.listViewDisplayed === 'auto' ? false : this.props.listViewDisplayed,
+
+    this.state = {
+        text: props.getDefaultValue(),
+        dataSource: ds.cloneWithRows(this.buildRowsFromResults([])),
+        listViewDisplayed: props.listViewDisplayed === 'auto' ? false : props.listViewDisplayed,
     };
-  },
+  }
 
   setAddressText(address) {
     this.setState({
       text: address
     })
-  },
+  }
 
   getAddressText() {
     return this.state.text
-  },
+  }
 
   buildRowsFromResults(results) {
     var res = null;
@@ -211,13 +171,13 @@ const GooglePlacesAutocomplete = React.createClass({
     });
 
     return [...res, ...results];
-  },
+  }
 
   componentWillMount() {
     this._request = this.props.debounce
       ? debounce(this._request, this.props.debounce)
       : this._request;
-  },
+  }
 
   componentWillReceiveProps(nextProps) {
     if (nextProps.listViewDisplayed !== 'auto') {
@@ -225,18 +185,22 @@ const GooglePlacesAutocomplete = React.createClass({
         listViewDisplayed: nextProps.listViewDisplayed,
       });
     }
-  },
+  }
 
   componentWillUnmount() {
     this._abortRequests();
-  },
+  }
+
+  componentDidMount() {
+    this.mounted = true;
+  }
 
   _abortRequests() {
     for (let i = 0; i < this._requests.length; i++) {
       this._requests[i].abort();
     }
     this._requests = [];
-  },
+  }
 
   /**
    * This method is exposed to parent components to focus on textInput manually.
@@ -244,7 +208,7 @@ const GooglePlacesAutocomplete = React.createClass({
    */
   triggerFocus() {
     if (this.refs.textInput) this.refs.textInput.focus();
-  },
+  }
 
   /**
    * This method is exposed to parent components to blur textInput manually.
@@ -252,7 +216,7 @@ const GooglePlacesAutocomplete = React.createClass({
    */
   triggerBlur() {
     if (this.refs.textInput) this.refs.textInput.blur();
-  },
+  }
 
   getCurrentLocation() {
     let options = null;
@@ -292,7 +256,7 @@ const GooglePlacesAutocomplete = React.createClass({
       },
       options
     );
-  },
+  }
 
   _enableRowLoader(rowData) {
     let rows = this.buildRowsFromResults(this._results);
@@ -305,9 +269,9 @@ const GooglePlacesAutocomplete = React.createClass({
         break;
       }
     }
-  },
+  }
   _disableRowLoaders() {
-    if (this.isMounted()) {
+    if (this.mounted) {
       for (let i = 0; i < this._results.length; i++) {
         if (this._results[i].isLoading === true) {
           this._results[i].isLoading = false;
@@ -317,7 +281,7 @@ const GooglePlacesAutocomplete = React.createClass({
         dataSource: this.state.dataSource.cloneWithRows(this.buildRowsFromResults(this._results)),
       });
     }
-  },
+  }
   _onPress(rowData) {
     if (rowData.isPredefinedPlace !== true && this.props.fetchDetails === true) {
       if (rowData.isLoading === true) {
@@ -342,7 +306,7 @@ const GooglePlacesAutocomplete = React.createClass({
         if (request.status === 200) {
           const responseJSON = JSON.parse(request.responseText);
           if (responseJSON.status === 'OK') {
-            if (this.isMounted()) {
+            if (this.mounted) {
               const details = responseJSON.result;
               this._disableRowLoaders();
               this._onBlur();
@@ -413,9 +377,7 @@ const GooglePlacesAutocomplete = React.createClass({
       // sending predefinedPlace as details for predefined places
       this.props.onPress(predefinedPlace, predefinedPlace);
     }
-  },
-  _results: [],
-  _requests: [],
+  }
 
   _getPredefinedPlace(rowData) {
     if (rowData.isPredefinedPlace !== true) {
@@ -427,7 +389,7 @@ const GooglePlacesAutocomplete = React.createClass({
       }
     }
     return rowData;
-  },
+  }
 
   _filterResultsByTypes(responseJSON, types) {
     if (types.length === 0) return responseJSON.results;
@@ -446,7 +408,7 @@ const GooglePlacesAutocomplete = React.createClass({
       }
     }
     return results;
-  },
+  }
 
   _requestNearby(latitude, longitude) {
     this._abortRequests();
@@ -465,7 +427,7 @@ const GooglePlacesAutocomplete = React.createClass({
           this._disableRowLoaders();
 
           if (typeof responseJSON.results !== 'undefined') {
-            if (this.isMounted()) {
+            if (this.mounted) {
               var results = [];
               if (this.props.nearbyPlacesAPI === 'GoogleReverseGeocoding') {
                 results = this._filterResultsByTypes(responseJSON, this.props.filterReverseGeocodingByTypes);
@@ -510,7 +472,7 @@ const GooglePlacesAutocomplete = React.createClass({
         dataSource: this.state.dataSource.cloneWithRows(this.buildRowsFromResults([])),
       });
     }
-  },
+  }
 
   _request(text) {
     this._abortRequests();
@@ -526,7 +488,7 @@ const GooglePlacesAutocomplete = React.createClass({
         if (request.status === 200) {
           const responseJSON = JSON.parse(request.responseText);
           if (typeof responseJSON.predictions !== 'undefined') {
-            if (this.isMounted()) {
+            if (this.mounted) {
               this._results = responseJSON.predictions;
               this.setState({
                 dataSource: this.state.dataSource.cloneWithRows(this.buildRowsFromResults(responseJSON.predictions)),
@@ -548,7 +510,7 @@ const GooglePlacesAutocomplete = React.createClass({
         dataSource: this.state.dataSource.cloneWithRows(this.buildRowsFromResults([])),
       });
     }
-  },
+  }
 
   _onChangeText(text) {
     this._request(text);
@@ -556,17 +518,18 @@ const GooglePlacesAutocomplete = React.createClass({
       text: text,
       listViewDisplayed: true,
     });
-  },
+  }
 
   _handleChangeText(text) {
     this._onChangeText(text);
     const onChangeText = this.props
       && this.props.textInputProps
-      && this.props.textInputProps.onChangeText;
+      && this.props.textInputProps.onChangeText
+        && this.props.textInputProps.onChangeText.bind(this);
     if (onChangeText) {
       onChangeText(text);
     }
-  },
+  }
 
   _getRowLoader() {
     return (
@@ -575,7 +538,7 @@ const GooglePlacesAutocomplete = React.createClass({
         size="small"
       />
     );
-  },
+  }
 
   _renderRowData(rowData) {
     if (this.props.renderRow) {
@@ -589,7 +552,7 @@ const GooglePlacesAutocomplete = React.createClass({
         {this._renderDescription(rowData)}
       </Text>
     );
-  },
+  }
 
   _renderDescription(rowData) {
     if (this.props.renderDescription) {
@@ -597,7 +560,7 @@ const GooglePlacesAutocomplete = React.createClass({
     }
 
     return rowData.description || rowData.formatted_address || rowData.name;
-  },
+  }
 
   _renderLoader(rowData) {
     if (rowData.isLoading === true) {
@@ -610,7 +573,7 @@ const GooglePlacesAutocomplete = React.createClass({
       );
     }
     return null;
-  },
+  }
 
   _renderRow(rowData = {}, sectionID, rowID) {
     return (
@@ -633,7 +596,7 @@ const GooglePlacesAutocomplete = React.createClass({
         </TouchableHighlight>
       </ScrollView>
     );
-  },
+  }
 
   _renderSeparator(sectionID, rowID) {
     if (rowID == this.state.dataSource.getRowCount() - 1) {
@@ -645,20 +608,20 @@ const GooglePlacesAutocomplete = React.createClass({
         key={ `${sectionID}-${rowID}` }
         style={[defaultStyles.separator, this.props.styles.separator]} />
     );
-  },
+  }
 
   _onBlur() {
     this.triggerBlur();
     this.setState({
       listViewDisplayed: false
     });
-  },
+  }
 
   _onFocus() {
     this.setState({
       listViewDisplayed: true
     });
-  },
+  }
 
   _shouldShowPoweredLogo() {
 
@@ -675,19 +638,19 @@ const GooglePlacesAutocomplete = React.createClass({
     }
 
     return false
-  },
+  }
 
   _renderLeftButton() {
     if (this.props.renderLeftButton) {
       return this.props.renderLeftButton()
     }
-  },
+  }
 
   _renderRightButton() {
       if (this.props.renderRightButton) {
         return this.props.renderRightButton()
       }
-    },
+    }
 
   _renderPoweredLogo() {
     if (!this._shouldShowPoweredLogo()) {
@@ -705,7 +668,7 @@ const GooglePlacesAutocomplete = React.createClass({
           />
         </View>
     );
-  },
+  }
 
   _getListView() {
     if ((this.state.text !== '' || this.props.predefinedPlaces.length || this.props.currentLocation === true) && this.state.listViewDisplayed === true) {
@@ -715,17 +678,18 @@ const GooglePlacesAutocomplete = React.createClass({
           keyboardDismissMode="on-drag"
           style={[defaultStyles.listView, this.props.styles.listView]}
           dataSource={this.state.dataSource}
-          renderSeparator={this._renderSeparator}
+          renderSeparator={this._renderSeparator.bind(this)}
           automaticallyAdjustContentInsets={false}
           {...this.props}
-          renderRow={this._renderRow}
-          renderFooter={this._renderPoweredLogo}
+          renderRow={this._renderRow.bind(this)}
+          renderFooter={this._renderPoweredLogo.bind(this)}
         />
       );
     }
 
     return null;
-  },
+  }
+
   render() {
     let {
       onFocus,
@@ -745,12 +709,12 @@ const GooglePlacesAutocomplete = React.createClass({
             returnKeyType={this.props.returnKeyType}
             autoFocus={this.props.autoFocus}
             style={[defaultStyles.textInput, this.props.styles.textInput]}
-            onChangeText={this._handleChangeText}
+            onChangeText={this._handleChangeText.bind(this)}
             value={this.state.text}
             placeholder={this.props.placeholder}
 
             placeholderTextColor={this.props.placeholderTextColor}
-            onFocus={onFocus ? () => {this._onFocus(); onFocus()} : this._onFocus}
+            onFocus={onFocus ? () => {this._onFocus(); onFocus()} : this._onFocus.bind(this)}
             clearButtonMode="while-editing"
             underlineColorAndroid={this.props.underlineColorAndroid}
           />
@@ -760,25 +724,47 @@ const GooglePlacesAutocomplete = React.createClass({
         {this.props.children}
       </View>
     );
-  },
-});
+  }
+};
 
-
-// this function is still present in the library to be retrocompatible with version < 1.1.0
-const create = function create(options = {}) {
-  return React.createClass({
-    render() {
-      return (
-        <GooglePlacesAutocomplete ref="GooglePlacesAutocomplete"
-          {...options}
-        />
-      );
+GooglePlacesAutocomplete.defaultProps = {
+    placeholder: 'Search',
+    placeholderTextColor: '#A8A8A8',
+    isRowScrollable: true,
+    underlineColorAndroid: 'transparent',
+    returnKeyType: 'default',
+    onPress: () => {},
+    onNotFound: () => {},
+    onFail: () => {},
+    minLength: 0,
+    fetchDetails: false,
+    autoFocus: false,
+    autoFillOnNotFound: false,
+    keyboardShouldPersistTaps: 'always',
+    getDefaultValue: () => '',
+    timeout: 20000,
+    onTimeout: () => console.warn('google places autocomplete: request timeout'),
+    query: {
+        key: 'missing api key',
+        language: 'en',
+        types: 'geocode',
     },
-  });
-};
-
-
-module.exports = {
-  GooglePlacesAutocomplete,
-  create
-};
+    GoogleReverseGeocodingQuery: {},
+    GooglePlacesSearchQuery: {
+        rankby: 'distance',
+        types: 'food',
+    },
+    styles: {},
+    textInputProps: {},
+    enablePoweredByContainer: true,
+    predefinedPlaces: [],
+    currentLocation: false,
+    currentLocationLabel: 'Current location',
+    nearbyPlacesAPI: 'GooglePlacesSearch',
+    enableHighAccuracyLocation: true,
+    filterReverseGeocodingByTypes: [],
+    predefinedPlacesAlwaysVisible: false,
+    enableEmptySections: true,
+    listViewDisplayed: 'auto',
+    debounce: 0
+}
