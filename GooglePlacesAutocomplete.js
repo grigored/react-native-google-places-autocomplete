@@ -548,6 +548,7 @@ export class GooglePlacesAutocomplete extends React.Component {
     return (
       <Text style={[{flex: 1}, defaultStyles.description, this.props.styles.description, rowData.isPredefinedPlace ? this.props.styles.predefinedPlacesDescription : {}]}
         numberOfLines={1}
+        allowFontScaling={false}
       >
         {this._renderDescription(rowData)}
       </Text>
